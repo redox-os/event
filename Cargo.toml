@@ -1,0 +1,6 @@
+[package]
+name = "event"
+version = "0.1.0"
+
+[dependencies]
+redox_syscall = { git = "https://github.com/redox-os/syscall.git" }
