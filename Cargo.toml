@@ -2,5 +2,9 @@
 name = "redox_event"
 version = "0.1.0"
 
+[lib]
+name = "event"
+path = "src/lib.rs"
+
 [dependencies]
 redox_syscall = { git = "https://github.com/redox-os/syscall.git" }
