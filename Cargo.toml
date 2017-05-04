@@ -7,4 +7,4 @@ name = "event"
 path = "src/lib.rs"
 
 [dependencies]
-redox_syscall = { git = "https://github.com/redox-os/syscall.git" }
+redox_syscall = "0.1"
