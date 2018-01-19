@@ -9,23 +9,52 @@ use std::os::unix::io::RawFd;
 use std::convert::From;
 use std::result::Result;
 
-pub struct EventQueue<R, E = IOError>
-{
+/// Subscribe `EvenQueue` to events produced by `fd`.
+///
+/// The evens will be processes by the default callback, set with
+/// `EvenQueue::set_default_callback`.
+pub fn subscribe_to_fd(fd: RawFd) -> IOResult<()> {
+    syscall::fevent(fd as usize, syscall::EVENT_READ)
+        .map_err(|x| IOError::from_raw_os_error(x.errno))
+        .map(|_| ())
+}
+
+/// Unsubscribe `EvenQueue` from events produced by `fd`.
+pub fn unsubscribe_from_fd(fd: RawFd) -> IOResult<()> {
+    syscall::fevent(fd as usize, 0)
+        .map_err(|x| IOError::from_raw_os_error(x.errno))
+        .map(|_| ())
+}
+
+pub struct EventQueue<R, E = IOError> {
     /// The file to read events from
     file: File,
     /// A map of registered file descriptors to their handler callbacks
     callbacks: BTreeMap<RawFd, Box<FnMut(usize) -> Result<Option<R>, E>>>,
+    /// The default callback to call for not-registered FD
+    default_callback: Option<Box<FnMut(RawFd, usize) -> Result<Option<R>, E>>>,
 }
 
 impl<R, E> EventQueue<R, E>
-    where E: From<IOError>
+where
+    E: From<IOError>,
 {
     /// Create a new event queue
     pub fn new() -> IOResult<EventQueue<R, E>> {
         Ok(EventQueue {
-               file: File::open("event:")?,
-               callbacks: BTreeMap::new(),
-           })
+            file: File::open("event:")?,
+            callbacks: BTreeMap::new(),
+            default_callback: None,
+        })
+    }
+
+    /// Set the default callback to be called if an event is produced
+    /// by a FD not registered with `add`.
+    pub fn set_default_callback<F>(&mut self, callback: F)
+    where
+        F: FnMut(RawFd, usize) -> Result<Option<R>, E> + 'static,
+    {
+        self.default_callback = Some(Box::new(callback));
     }
 
     /// Add a file to the event queue, calling a callback when an event occurs
@@ -37,12 +66,12 @@ impl<R, E> EventQueue<R, E>
     /// or Ok(Some(R)) to break the event loop and return the value.
     /// Err can be used to allow the callback to return an error, and break the
     /// event loop
-    pub fn add<F: FnMut(usize) -> Result<Option<R>, E> + 'static>(&mut self,
-                                                                  fd: RawFd,
-                                                                  callback: F)
-                                                                  -> IOResult<()> {
-        syscall::fevent(fd as usize, syscall::EVENT_READ)
-            .map_err(|x| IOError::from_raw_os_error(x.errno))?;
+    pub fn add<F: FnMut(usize) -> Result<Option<R>, E> + 'static>(
+        &mut self,
+        fd: RawFd,
+        callback: F,
+    ) -> IOResult<()> {
+        subscribe_to_fd(fd)?;
 
         self.callbacks.insert(fd, Box::new(callback));
 
@@ -50,12 +79,12 @@ impl<R, E> EventQueue<R, E>
     }
 
     /// Remove a file from the event queue, returning its callback if found
-    pub fn remove(&mut self,
-                  fd: RawFd)
-                  -> IOResult<Option<Box<FnMut(usize) -> Result<Option<R>, E>>>> {
+    pub fn remove(
+        &mut self,
+        fd: RawFd,
+    ) -> IOResult<Option<Box<FnMut(usize) -> Result<Option<R>, E>>>> {
         if let Some(callback) = self.callbacks.remove(&fd) {
-            syscall::fevent(fd as usize, 0)
-                .map_err(|x| IOError::from_raw_os_error(x.errno))?;
+            unsubscribe_from_fd(fd)?;
 
             Ok(Some(callback))
         } else {
@@ -67,6 +96,8 @@ impl<R, E> EventQueue<R, E>
     pub fn trigger(&mut self, fd: RawFd, count: usize) -> Result<Option<R>, E> {
         if let Some(callback) = self.callbacks.get_mut(&fd) {
             callback(count)
+        } else if let Some(ref mut callback) = self.default_callback {
+            callback(fd, count)
         } else {
             Ok(None)
         }
