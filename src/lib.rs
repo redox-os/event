@@ -91,10 +91,10 @@ where
         fd: RawFd,
         callback: F,
     ) -> IOResult<usize> {
-        subscribe_to_fd(self.file.as_raw_fd(), fd, self.next_id)?;
         self.next_id += 1;
 
         self.callbacks.insert(self.next_id, (fd, Box::new(callback)));
+        subscribe_to_fd(self.file.as_raw_fd(), fd, self.next_id)?;
 
         Ok(self.next_id)
     }
@@ -105,9 +105,7 @@ where
         id: usize
     ) -> IOResult<Option<Box<FnMut(Event) -> Result<Option<R>, E>>>> {
         if let Some((fd, callback)) = self.callbacks.remove(&id) {
-            unsubscribe_from_fd(self.file.as_raw_fd(), fd, self.next_id)?;
-            self.next_id += 1;
-
+            unsubscribe_from_fd(self.file.as_raw_fd(), fd, id)?;
             Ok(Some(callback))
         } else {
             Ok(None)
