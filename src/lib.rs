@@ -146,7 +146,7 @@ where
                     events.len() * mem::size_of::<SysEvent>()
                 )
             };
-            let n = self.file.read(&mut events_buf).map_err(E::from)?;
+            let n = self.file.read(&mut events_buf).map_err(E::from)? / mem::size_of::<SysEvent>();
             for sysevent in &events[..n] {
                 let event = Event {
                     fd: sysevent.id as RawFd,
