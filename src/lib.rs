@@ -17,8 +17,8 @@ use std::{
 
 #[derive(Debug, Clone, Copy)]
 pub struct Event {
-    fd: RawFd,
-    flags: usize
+    pub fd: RawFd,
+    pub flags: usize
 }
 
 /// Subscribe `EvenQueue` to events produced by `fd`.
