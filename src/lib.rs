@@ -1,6 +1,9 @@
 extern crate syscall;
 
-use syscall::data::Event as SysEvent;
+use syscall::{
+    Event as SysEvent,
+    EventFlags,
+};
 
 use std::{
     collections::BTreeMap,
@@ -18,7 +21,7 @@ use std::{
 #[derive(Debug, Clone, Copy)]
 pub struct Event {
     pub fd: RawFd,
-    pub flags: usize
+    pub flags: EventFlags,
 }
 
 /// Subscribe `EvenQueue` to events produced by `fd`.
@@ -36,7 +39,7 @@ pub fn subscribe_to_fd(onto: RawFd, fd: RawFd, id: usize) -> IOResult<()> {
 pub fn unsubscribe_from_fd(onto: RawFd, fd: RawFd, id: usize) -> IOResult<()> {
     syscall::write(onto as usize, &SysEvent {
         id: fd as usize,
-        flags: 0,
+        flags: syscall::EventFlags::empty(),
         data: id
     })
     .map_err(|x| IOError::from_raw_os_error(x.errno))
@@ -48,12 +51,12 @@ pub struct EventQueue<R, E = IOError> {
     /// The file to read events from
     pub file: File,
     /// A map of registered file descriptors to their handler callbacks
-    callbacks: BTreeMap<usize, (RawFd, Box<FnMut(Event) -> Result<Option<R>, E>>)>,
+    callbacks: BTreeMap<usize, (RawFd, Box<dyn FnMut(Event) -> Result<Option<R>, E>>)>,
     /// An ID counter, ensuring each registered fd gets a unique ID
     /// (which means the same fd can be registered multiple times)
     next_id: usize,
     /// The default callback to call for not-registered FD
-    default_callback: Option<Box<FnMut(Event) -> Result<Option<R>, E>>>,
+    default_callback: Option<Box<dyn FnMut(Event) -> Result<Option<R>, E>>>,
 }
 
 impl<R, E> EventQueue<R, E>
@@ -103,7 +106,7 @@ where
     pub fn remove(
         &mut self,
         id: usize
-    ) -> IOResult<Option<Box<FnMut(Event) -> Result<Option<R>, E>>>> {
+    ) -> IOResult<Option<Box<dyn FnMut(Event) -> Result<Option<R>, E>>>> {
         if let Some((fd, callback)) = self.callbacks.remove(&id) {
             unsubscribe_from_fd(self.file.as_raw_fd(), fd, id)?;
             Ok(Some(callback))
@@ -148,7 +151,7 @@ where
             for sysevent in &events[..n] {
                 let event = Event {
                     fd: sysevent.id as RawFd,
-                    flags: sysevent.flags
+                    flags: sysevent.flags,
                 };
                 if let Some(ret) = self.trigger(sysevent.data, event)? {
                     return Ok(ret);
