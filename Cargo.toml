@@ -1,6 +1,6 @@
 [package]
 name = "redox_event"
-version = "0.1.0"
+version = "0.2.0"
 description = "A Rust library to use Redox I/O events"
 license = "MIT"
 authors = ["Jeremy Soller <jackpot51@gmail.com>"]
