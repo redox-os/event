@@ -33,7 +33,7 @@ impl From<EventFlags> for syscall::flag::EventFlags {
     fn from(value: EventFlags) -> Self {
         let mut this = Self::empty();
         this.set(Self::EVENT_READ, value.contains(EventFlags::READ));
-        this.set(Self::EVENT_WRITE, value.contains(EventFlags::READ));
+        this.set(Self::EVENT_WRITE, value.contains(EventFlags::WRITE));
         this
     }
 }
