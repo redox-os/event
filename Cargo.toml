@@ -13,6 +13,6 @@ name = "event"
 path = "src/lib.rs"
 
 [dependencies]
-libredox = { version = "0.0.1", default-features = false, features = ["call"] }
+libredox = "0.0.4"
 redox_syscall = "0.4"
 bitflags = "2"

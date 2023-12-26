@@ -3,8 +3,8 @@
 use core::marker::PhantomData;
 use core::mem::size_of;
 
-use libredox::{Fd, flag, errno};
 pub use libredox::error::{self, Result};
+use libredox::{flag, Fd};
 
 bitflags::bitflags! {
     #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -25,7 +25,10 @@ impl From<syscall::flag::EventFlags> for EventFlags {
     fn from(value: syscall::flag::EventFlags) -> Self {
         let mut this = Self::empty();
         this.set(Self::READ, value.contains(syscall::EventFlags::EVENT_READ));
-        this.set(Self::WRITE, value.contains(syscall::EventFlags::EVENT_WRITE));
+        this.set(
+            Self::WRITE,
+            value.contains(syscall::EventFlags::EVENT_WRITE),
+        );
         this
     }
 }
@@ -52,7 +55,11 @@ pub struct RawEventQueue {
 impl RawEventQueue {
     pub fn new() -> Result<Self> {
         Ok(Self {
-            inner: Fd::open("event:", flag::O_CREAT | flag::O_RDWR | flag::O_CLOEXEC, 0o700)?,
+            inner: Fd::open(
+                "event:",
+                flag::O_CREAT | flag::O_RDWR | flag::O_CLOEXEC,
+                0o700,
+            )?,
         })
     }
     /// Subscribe to events produced by `fd`
@@ -92,7 +99,7 @@ impl Iterator for RawEventQueue {
                         user_data: event.data,
                     }));
                 }
-                Err(error::Error { errno: errno::EINTR }) => continue,
+                Err(err) if err.is_interrupt() => continue,
                 Err(err) => return Some(Err(err)),
             }
         }
@@ -184,10 +191,12 @@ impl<U: UserData> Iterator for EventQueue<U> {
 
     // TODO: next_chunk
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().map(|res| res.map(|raw| Event {
-            user_data: U::from_user_data(raw.user_data),
-            fd: raw.fd,
-            flags: raw.flags,
-        }))
+        self.inner.next().map(|res| {
+            res.map(|raw| Event {
+                user_data: U::from_user_data(raw.user_data),
+                fd: raw.fd,
+                flags: raw.flags,
+            })
+        })
     }
 }
