@@ -18,5 +18,5 @@ redox_syscall = { version = "0.5", optional = true }
 bitflags = "2"
 
 [features]
-default = ["wrappers", "redox_syscall"]
+default = ["wrappers"]
 wrappers = []
