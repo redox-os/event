@@ -45,6 +45,9 @@ impl RawEventQueue {
             Ok(event.assume_init())
         }
     }
+    pub fn iter(&self) -> impl Iterator<Item = Result<RawEvent>> + '_ {
+        core::iter::from_fn(|| Some(self.next_event()))
+    }
     // TODO: "next_event_nonblock"?
 }
 impl Drop for RawEventQueue {
@@ -130,17 +133,34 @@ pub struct EventQueue<U: UserData> {
 
 impl<U: UserData> EventQueue<U> {
     /// Create a new event queue
+    #[inline]
     pub fn new() -> Result<Self> {
         Ok(EventQueue {
             inner: RawEventQueue::new()?,
             _marker: PhantomData,
         })
     }
+    #[inline]
     pub fn subscribe(&self, fd: usize, data: U, flags: EventFlags) -> Result<()> {
         self.inner.subscribe(fd, data.into_user_data(), flags)
     }
+    #[inline]
     pub fn unsubscribe(&self, fd: usize) -> Result<()> {
         self.inner.unsubscribe(fd)
+    }
+    #[inline]
+    pub fn raw(&self) -> &RawEventQueue {
+        &self.inner
+    }
+    pub fn next_event(&self) -> Result<Event<U>> {
+        self.inner.next_event().map(|raw| Event {
+            user_data: U::from_user_data(raw.user_data),
+            fd: raw.fd,
+            flags: EventFlags::from_bits_retain(raw.flags),
+        })
+    }
+    pub fn iter(&self) -> impl Iterator<Item = Result<Event<U>>> + '_ {
+        core::iter::from_fn(|| Some(self.next_event()))
     }
 }
 impl<U: UserData> Iterator for EventQueue<U> {
@@ -148,12 +168,6 @@ impl<U: UserData> Iterator for EventQueue<U> {
 
     // TODO: next_chunk
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().map(|res| {
-            res.map(|raw| Event {
-                user_data: U::from_user_data(raw.user_data),
-                fd: raw.fd,
-                flags: EventFlags::from_bits_retain(raw.flags),
-            })
-        })
+        Some(self.next_event())
     }
 }
