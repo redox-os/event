@@ -1,6 +1,6 @@
 [package]
 name = "redox_event"
-version = "0.4.0"
+version = "0.4.1"
 description = "A Rust library to use Redox I/O events"
 license = "MIT"
 authors = ["Jeremy Soller <jackpot51@gmail.com>"]
@@ -13,8 +13,8 @@ name = "event"
 path = "src/lib.rs"
 
 [dependencies]
-libredox = { version = "0.1.2", default-features = false }
-redox_syscall = { version = "0.5", optional = true }
+libredox = { version = "0.1.11", default-features = false }
+redox_syscall = { version = "0.6", optional = true }
 bitflags = "2"
 
 [features]
