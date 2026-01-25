@@ -6,6 +6,7 @@ use libredox::error::{Error, Result};
 use crate::raw;
 pub use crate::raw::EventFlags;
 
+#[derive(Debug)]
 pub struct RawEventQueue {
     inner: usize,
 }
@@ -124,6 +125,7 @@ pub struct Event<U: UserData> {
     pub fd: usize,
 }
 
+#[derive(Debug)]
 pub struct EventQueue<U: UserData> {
     inner: RawEventQueue,
 
