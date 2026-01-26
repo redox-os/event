@@ -173,3 +173,6 @@ impl<U: UserData> Iterator for EventQueue<U> {
         Some(self.next_event())
     }
 }
+
+unsafe impl<U: UserData> Send for EventQueue<U> {}
+unsafe impl<U: UserData> Sync for EventQueue<U> {}
