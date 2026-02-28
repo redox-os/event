@@ -13,7 +13,7 @@ name = "event"
 path = "src/lib.rs"
 
 [dependencies]
-libredox = { git = "https://gitlab.redox-os.org/Ibuki.O/libredox", branch = "base-libc", default-features = false, features = ["base"] }
+libredox = { version = "0.1.14", default-features = false, features = ["base"] }
 redox_syscall = { version = "0.7", optional = true }
 bitflags = "2"
 
