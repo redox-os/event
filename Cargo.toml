@@ -13,8 +13,8 @@ name = "event"
 path = "src/lib.rs"
 
 [dependencies]
-libredox = { git = "https://gitlab.redox-os.org/Ibuki.O/libredox.git", branch = "relpathat", default-features = false, features = ["base"] }
-redox_syscall = { git = "https://gitlab.redox-os.org/Ibuki.O/syscall.git", branch = "call-two-fds", optional = true }
+libredox = { version = "0.1.17", default-features = false, features = ["base"] }
+redox_syscall = { version = "0.8", optional = true }
 bitflags = "2"
 
 [features]
